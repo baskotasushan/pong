@@ -1,79 +1,95 @@
 package pong;
 
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import javax.swing.*;
+import java.awt.event.MouseEvent;
 
+public class Pong extends Panel implements Runnable {
 
-public class Pong extends JFrame {
+    // size of the game area
+    static final int WIDTH = 500;
+    static final int HEIGHT = 500;
 
-    //screen size variables.
-    int gWidth = 500;
-    int gHeight = 400;
-    Dimension screenSize = new Dimension(gWidth, gHeight);
+    // num of frames per second
+    final int FRAME_RATE = 40;
 
-    Image dbImage;
-    Graphics dbGraphics;
+    Thread thread;
+    Image img;
+    Graphics g;
 
-    //ball object
-    static Ball b = new Ball(250, 200);
+    Ball ball;
+    Paddle paddle;
 
+    public void init() {
+        ball = new Ball();
+        paddle = new Paddle();
+        img = createImage(WIDTH, HEIGHT);
+        g = img.getGraphics();
 
-    //constructor for window
-    public Pong() {
-        this.setTitle("Pong!");
-        this.setSize(screenSize);
-        this.setResizable(false);
-        this.setVisible(true);
-        this.setBackground(Color.DARK_GRAY);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        this.addKeyListener(new AL());
+        enableEvents(MouseEvent.MOUSE_MOVED | MouseEvent.MOUSE_PRESSED);
     }
 
-    public static void main(String[] args) {
-        Pong pg = new Pong();
-
-        //create and start threads.
-        Thread ball = new Thread(b);
-        ball.start();
-        Thread p1 = new Thread(b.p1);
-        Thread p2 = new Thread(b.p2);
-        p2.start();
-        p1.start();
-
+    public void start() {
+        thread = new Thread(this);
+        thread.start();
     }
 
-    @Override
+    public void stop() {
+        thread.interrupt();
+    }
+
+    public void processMouseMotionEvent(MouseEvent e) {
+        // move the paddle if the mouse is moved.
+        paddle.move(e.getX());
+    }
+
+    public void processMouseEvent(MouseEvent e) {
+        // move the ball if mouse is clicked.
+        if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+            ball.start_moving();
+        }
+    }
+
+    public void run() {
+        try {
+            while (true) {
+                ball.move_one_step(paddle);
+                g.setColor(Color.black);
+                g.fillRect(0, 0, WIDTH, HEIGHT);
+                ball.draw(g);
+                paddle.draw(g);
+                repaint();
+                Thread.sleep(1000 / FRAME_RATE);
+            }
+        } catch (InterruptedException ie) {
+            System.err.print("Interrupted!\n" + ie);
+        }
+    }
+
     public void paint(Graphics g) {
-        dbImage = createImage(getWidth(), getHeight());
-        dbGraphics = dbImage.getGraphics();
-        draw(dbGraphics);
-        g.drawImage(dbImage, 0, 0, this);
+        g.drawImage(img, 0, 0, WIDTH, HEIGHT, this);
     }
 
-    public void draw(Graphics g) {
-        b.draw(g);
-        b.p1.draw(g);
-        b.p2.draw(g);
-
-        g.setColor(Color.WHITE);
-        g.drawString(""+b.p1score, 15, 20);
-        g.drawString(""+b.p2score, 385, 20);
-
-        repaint();
+    public void update(Graphics g) {
+        paint(g);
     }
 
-    public class AL extends KeyAdapter {
-        @Override
-        public void keyPressed(KeyEvent e) {
-            b.p1.keyPressed(e);
-            b.p2.keyPressed(e);
-        }
-        @Override
-        public void keyReleased(KeyEvent e) {
-            b.p1.keyReleased(e);
-            b.p2.keyReleased(e);
-        }
+    public static void main(String args[]) {
+        Frame frame = new Frame();
+        frame.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                System.exit(0);
+            }
+
+            ;
+        });
+
+        Pong pong = new Pong();
+        pong.setSize(WIDTH, HEIGHT);
+        frame.add(pong);
+        frame.pack();
+        frame.setSize(WIDTH, HEIGHT + 20);
+        frame.setVisible(true);
+        pong.init();
+        pong.start();
     }
 }

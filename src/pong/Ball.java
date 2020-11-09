@@ -1,97 +1,82 @@
 package pong;
 
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Rectangle;
-import java.util.Random;
+import java.awt.*;
 
 
-public class Ball implements Runnable {
+public class Ball {
+    // size of the ball
+    final static int WIDTH = 10;
+    final static int HEIGHT = 10;
 
-    //global variables
-    int x, y, xDirection, yDirection;
+    // how fast to move up and down
+    final static int VERTICAL_VELOCITY = 7;
 
+    // x and y are the position of the center of the ball
+    int x, y;
 
-    int p1score, p2score;
+    // vx and vy are the x and y component of the velocity of the ball.
+    int vx, vy;
 
-    Paddle p1 = new Paddle(10, 25, 1);
-    Paddle p2 = new Paddle(485, 25, 2);
-
-    Rectangle ball;
-
-
-    public Ball(int x, int y){
-        p1score = p2score = 0;
-        this.x = x;
-        this.y = y;
-
-        //Set ball moving randomly
-        Random r = new Random();
-        int rXDir = r.nextInt(1);
-        if (rXDir == 0)
-            rXDir--;
-        setXDirection(rXDir);
-
-        int rYDir = r.nextInt(1);
-        if (rYDir == 0)
-            rYDir--;
-        setYDirection(rYDir);
-
-        //create "ball"
-        ball = new Rectangle(this.x, this.y, 15, 15);
+    Ball() {
+        x = Pong.WIDTH / 2;
+        y = Ball.HEIGHT / 2;
+        vx = 0;
+        vy = 0;
     }
 
-    public void setXDirection(int xDir){
-        xDirection = xDir;
-    }
-    public void setYDirection(int yDir){
-        yDirection = yDir;
-    }
-
-    public void draw(Graphics g) {
-        g.setColor(Color.WHITE);
-        g.fillRect(ball.x, ball.y, ball.width, ball.height);
+    // draw the white ball on the screen.
+    void draw(Graphics g) {
+        g.setColor(Color.white);
+        g.fillRect(x - Ball.WIDTH / 2, y - Ball.HEIGHT / 2,
+                Ball.WIDTH, Ball.HEIGHT);
     }
 
-    public void collision(){
-        if(ball.intersects(p1.paddle))
-            setXDirection(+1);
-        if(ball.intersects(p2.paddle))
-            setXDirection(-1);
+    // called when user first click the mouse.  Change the velocity so that
+    // the ball starts moving.
+    void start_moving() {
+        vx = 0;
+        vy = VERTICAL_VELOCITY;
     }
-    public void move() {
-        collision();
-        ball.x += xDirection;
-        ball.y += yDirection;
-        //bounce the ball when it hits the edge of the screen
-        if (ball.x <= 0) {
-            setXDirection(+1);
-            p2score++;
 
+    // calculate the next position of the ball.  The velocity
+    // might change due to collision with paddle or boundary
+    // of the game area.
+    void move_one_step(Paddle paddle) {
+        // new position
+        x += vx;
+        y += vy;
+
+        // check for bouncing
+        if (x <= Ball.WIDTH / 2 || x >= Pong.WIDTH - Ball.WIDTH / 2) {
+            // bounds off horizontally
+            vx = -vx;
         }
-        if (ball.x >= 485) {
-            setXDirection(-1);
-            p1score++;
-        }
-
-        if (ball.y <= 15) {
-            setYDirection(+1);
-        }
-
-        if (ball.y >= 385) {
-            setYDirection(-1);
-        }
-    }
-
-    @Override
-    public void run() {
-        try {
-            while(true) {
-                move();
-                Thread.sleep(8);
+        if (y <= Ball.HEIGHT / 2) {
+            // bounds off horizontally
+            vy = -vy;
+        } else if (y > Pong.HEIGHT - Ball.HEIGHT / 2) {
+            // goes out of bound! loose point and restart.
+            x = Pong.WIDTH / 2;
+            y = Ball.HEIGHT / 2;
+            vx = 0;
+            vy = 0;
+        } else if (y + Ball.HEIGHT / 2 > Pong.HEIGHT - Paddle.HEIGHT) {
+            int px = paddle.x;
+            int py = paddle.y;
+            // Ball collides with paddle.  Change the direction (vx) depending
+            // on the collision point between the ball and the paddle.
+            if (x >= px - Paddle.R1 && x <= px + Paddle.R1) {
+                vy = -vy;
+            } else if (x >= px - Paddle.R2 && x <= px + Paddle.R2) {
+                vx += (x > px ? 1 : -1);
+                vy = -vy;
+            } else if (x >= px - Paddle.R3 && x <= px + Paddle.R3) {
+                vx += (x > px ? 2 : -2);
+                vy = -vy;
+            } else if (x + Ball.WIDTH / 2 >= px - Paddle.WIDTH / 2 && x - Ball.WIDTH / 2 <= px + Paddle.WIDTH / 2) {
+                vx += (x > px ? 3 : -3);
+                vy = -vy;
             }
-        }catch(Exception e) { System.err.println(e.getMessage()); }
-
+        }
     }
-
 }
